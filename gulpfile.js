@@ -12,11 +12,12 @@ let webpack = require('webpack'); //引入webpack模块加载器兼打包工具
 
 let gutil = require('gulp-util')   //gulp工具模块
 
-let webpackConf = require('./webpack.config')  //引入webpack模块配置文件
 // let webpackDevConf = require('./webpack-dev.config')
 
 let src = process.cwd() + '/src';   //process.cwd():返回运行当前脚本的工作目录的路径
 let assets = process.cwd() + '/assets'
+
+var env;
 
 // js check
 gulp.task('hint', () => {
@@ -38,8 +39,17 @@ gulp.task('clean', ['hint'], () => {
     return gulp.src(assets, {read: true}).pipe(clean())
 })
 
-// run webpack pack
+gulp.task('env:dev', function () {
+    env = 'development';
+});
+
+gulp.task('env:build', function () {
+    env = 'production';
+});
+
+// webpack pack
 gulp.task('pack', ['clean'], (done) => {
+    let webpackConf = require(env === 'production' ? './webpack.config' :  './webpack-dev.config')  //引入webpack模块配置文件
     webpack(webpackConf, (err, stats) => {
         if(err) throw new gutil.PluginError('webpack', err)
         gutil.log('[webpack]', stats.toString({colors: true}))
@@ -47,8 +57,12 @@ gulp.task('pack', ['clean'], (done) => {
     })
 })
 
-// html process
-gulp.task('default', ['pack'])
+// default --> development
+gulp.task('default', ['env:dev', 'pack']);
+
+// build --> production
+gulp.task('build', ['env:build', 'pack']);
+
 /*gulp.task('default', ['pack'], () => {
     let replace = require('gulp-replace')
     let htmlmin = require('gulp-htmlmin')
@@ -64,7 +78,7 @@ gulp.task('default', ['pack'])
 })*/
 
 // deploy assets to remote server
-gulp.task('deploy', () => {
+gulp.task('deploy', ['build'], () => {
     let sftp = require('gulp-sftp')
 
     return gulp.src(assets + '/**')
